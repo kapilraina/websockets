@@ -7,8 +7,8 @@ $("#connect").prop('disabled', false);
 $("#disconnect").prop('disabled', true);
 function connect() {
 
-
-    var cws = new WebSocket("ws://localhost:8080/ws/chat");
+    console.log(window.location.host);
+    var cws = new WebSocket("ws://"+window.location.host+"/ws/chat");
     console.log(JSON.stringify(cws));
     clientWebSocket =  cws;
     cws.onopen = function () {

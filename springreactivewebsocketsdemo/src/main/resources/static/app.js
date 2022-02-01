@@ -6,9 +6,16 @@ fetchinitialdata();
 $("#connect").prop('disabled', false);
 $("#disconnect").prop('disabled', true);
 function connect() {
-
+    var cws;
+    console.log(window.location);
     console.log(window.location.host);
-    var cws = new WebSocket("ws://"+window.location.host+"/ws/chat");
+    if(window.location.protocol === "http:"){
+        cws = new WebSocket("ws://"+window.location.host+"/ws/chat");
+    }
+    if(window.location.protocol === "https:"){
+        cws = new WebSocket("wss://"+window.location.host+"/ws/chat");
+    }
+    
     console.log(JSON.stringify(cws));
     clientWebSocket =  cws;
     cws.onopen = function () {

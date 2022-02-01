@@ -24,9 +24,9 @@ public class ExistingAuthPresenceFilter implements WebFilter {
     Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
     private ChatUserRepository repo;
-    public ExistingAuthPresenceFilter(ChatUserRepository repo)
-    {
-        this.repo =repo;
+
+    public ExistingAuthPresenceFilter(ChatUserRepository repo) {
+        this.repo = repo;
     }
 
     @Override
@@ -35,27 +35,31 @@ public class ExistingAuthPresenceFilter implements WebFilter {
         Mono<MultiValueMap<String, String>> formData = exchange.getFormData();
         return formData.flatMap(mvMap -> {
             String username = mvMap.getFirst("username");
-            if(username==null)
+            if (username == null)
                 return chain.filter(exchange);
             return repo.userSessionExists(username)
                     .flatMap(exists -> {
                         if (!exists) {
+                            logger.info("ExistingAuthPresenceFilter - Session Does not Exists for " + username);
                             return chain.filter(exchange);
                         } else {
-                            logger.info("Session Already Exists for "+username);
-                           // exchange.getResponse().setStatusCode(HttpStatus.);
-                           // exchange.getResponse().setRawStatusCode(HttpStatus.CONFLICT.value());
+                            logger.info("Session Already Exists for " + username);
+                            // exchange.getResponse().setStatusCode(HttpStatus.);
+                            // exchange.getResponse().setRawStatusCode(HttpStatus.CONFLICT.value());
                             exchange.getResponse().getHeaders().add("Content-Type", MimeTypeUtils.TEXT_HTML_VALUE);
                             return exchange
                                     .getResponse()
                                     .writeWith(
                                             Flux.just(
                                                     exchange
-                                                    .getResponse().bufferFactory()
-                                                    .wrap(
-                                                            String.format("<p>Session Already Exists for %s. Logoff From that session first." +
-                                                                    "<a href='chat.html'>Main</a></p>",username).getBytes(StandardCharsets.UTF_8))));
-
+                                                            .getResponse().bufferFactory()
+                                                            .wrap(
+                                                                    String.format(
+                                                                            "<p>Session Already Exists for %s. Logoff From that session first."
+                                                                                    +
+                                                                                    "<a href='chat.html'>Main</a></p>",
+                                                                            username)
+                                                                            .getBytes(StandardCharsets.UTF_8))));
 
                         }
                     });

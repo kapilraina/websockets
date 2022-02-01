@@ -119,7 +119,7 @@ public class SocksConfig {
 
     @Bean(name = "wshbean4Chat")
     WebSocketHandler wshbean4Chat(Many<ChatMessage> chatSessionStream, ChatUtils utils, ObjectMapper mapper,
-                                  ChatUserRepository repo)
+            ChatUserRepository repo)
             throws JsonProcessingException {
 
         return session -> {
@@ -127,10 +127,12 @@ public class SocksConfig {
 
             session.receive()
                     .map(wsm -> wsm.getPayloadAsText())
-                    .onErrorResume(t-> {
-                        session.close();
-                        return Mono.error(t);
-                    })
+                    /*
+                     * .onErrorReturn(throwable -> {
+                     * logger.info("Chat Session Closed : "+session.getId());
+                     * return session.close();
+                     * })
+                     */
                     .map(s -> {
                         ChatMessage cmparsed = null;
                         try {
@@ -144,9 +146,27 @@ public class SocksConfig {
                         return cmparsed;
                     })
                     .map(cmsg -> updateSessionRepo(repo, cmsg))
-                    .subscribe(chatmessage -> chatSessionStream.tryEmitNext(chatmessage));
+                    .flatMap(chatMessage -> {
+                        // Needed?
+                        if (chatMessage.getType().equals(MessageTypes.LEAVE)) {
+                            // session.close();
+                        }
+                        return Mono.just(chatMessage);
+                    })
+                    .doOnComplete(() -> {
+                        logger.info("Chat Session Closed : " + session.getId());
+                        // session.close();
+                    }).log()
+                    .doOnNext(chatSessionStream::tryEmitNext)
+                    .subscribe();
 
             Flux<WebSocketMessage> sessionOutboundFlux = chatSessionStream.asFlux()
+                    .map(cmo1 -> {
+                        if (cmo1.getType().equals(MessageTypes.LEAVE)) {
+                            cmo1.setMessage("Left");
+                        }
+                        return cmo1;
+                    })
                     .map(cmo -> {
                         try {
                             return mapper.writeValueAsString(cmo);
@@ -157,7 +177,8 @@ public class SocksConfig {
                         return "";
                     })
                     .map(session::textMessage)
-                    .onErrorResume(t-> {
+                    .onErrorResume(t -> {
+                        logger.info(t.getMessage() + "::Chat Session Closed : " + session.getId());
                         session.close();
                         return Mono.error(t);
                     });
@@ -211,7 +232,7 @@ public class SocksConfig {
 
     @Bean
     public ReactiveUserDetailsService userDetailsService() {
-        return new CustomUserDetailService(createSyntheticUsers(passwordEncoder()),passwordEncoder());
+        return new CustomUserDetailService(createSyntheticUsers(passwordEncoder()), passwordEncoder());
     }
 
     @Bean

@@ -6,41 +6,53 @@ fetchinitialdata();
 $("#connect").prop('disabled', false);
 $("#disconnect").prop('disabled', true);
 function connect() {
-    var cws;
     console.log(window.location);
     console.log(window.location.host);
-    if(window.location.protocol === "http:"){
-        cws = new WebSocket("ws://"+window.location.host+"/ws/chat");
+
+    if(clientWebSocket !== undefined)
+     {
+         console.log("Existing socket state : "+clientWebSocket.readyState);
+     }   
+
+
+
+    try {
+        if(window.location.protocol === "http:"){
+            clientWebSocket = new WebSocket("ws://"+window.location.host+"/ws/chat");
+        }
+        if(window.location.protocol === "https:"){
+            clientWebSocket = new WebSocket("wss://"+window.location.host+"/ws/chat");
+        }
+          
+    } catch (error) {
+            console.error("Error Opening Socket : "+error);
     }
-    if(window.location.protocol === "https:"){
-        cws = new WebSocket("wss://"+window.location.host+"/ws/chat");
-    }
-    
-    console.log(JSON.stringify(cws));
-    clientWebSocket =  cws;
-    cws.onopen = function () {
+    console.log("New socket state : "+clientWebSocket.readyState);
+    clientWebSocket.onopen = function () {
         // console.log("clientWebSocket.onopen", clientWebSocket);
         //console.log("clientWebSocket.readyState", clientWebSocket.);
         // fetchinitialdata();
-        events("Opening connection");
+        console.log("Connected socket state : "+clientWebSocket.readyState);
+        events("Opening connection "+JSON.stringify(clientWebSocket));
         $("#connect").prop('disabled', true);
         $("#disconnect").prop('disabled', false);
         sendChat("Joined", "JOIN")
         populateActiveUsers();
     }
-    cws.onclose = function (closeEvent) {
+    clientWebSocket.onclose = function (closeEvent) {
         // console.log("clientWebSocket.onclose", clientWebSocket, error);
-        events("Closing connection : "+ JSON.stringify(closeEvent));
+        console.log("DisConnected socket state : "+clientWebSocket.readyState);
         $("#connect").prop('disabled', false);
         $("#disconnect").prop('disabled', true);
     }
-    cws.onerror = function (error) {
+    clientWebSocket.onerror = function (error) {
         //  console.log("clientWebSocket.onerror", clientWebSocket, error);
         events("An error occured : "+  JSON.stringify(error));
     }
-    cws.onmessage = function (data) {
+    clientWebSocket.onmessage = function (data) {
         // console.log("clientWebSocket.onmessage", clientWebSocket, error);
         message(data.data);
+        return false;
     }
 }
     function events(responseEvent) {
@@ -81,24 +93,24 @@ function connect() {
 
 function disconnect() {
     console.log("Who Clicked Disconnect ?");
-    sendChat("Left", "LEAVE");
+    sendChat("Leaving", "LEAVE");
     $('.activeuserscontainer').empty();
-    //clientWebSocket.close(1000);
-    clientWebSocket.onclose({});// Hack
+    clientWebSocket.close(1000);
+   // clientWebSocket.onclose({});// Hack
 }
 
 function sendChat(message, chattype) {
-    if(clientWebSocket !== 'undefined' && clientWebSocket.readyState === 1) {
-
+    if(clientWebSocket !== undefined && clientWebSocket.readyState === 1) {
+        console.log("SendChat socket state : "+clientWebSocket.readyState);
         //clientWebSocket.send(JSON.stringify({'username': $("#username").val(),'messageText': $("#chatmessage").val()}));
-        if (message != 'undefined' && message.trim() !== "") {
+        if (message != undefined && message.trim() !== "") {
             clientWebSocket.send(JSON.stringify({'username': username, message, 'type': chattype}));
             $("#chatmessage").val("");
         }
     }
     else {
         console.log("Socket Not Ready");
-        connect();
+        //connect();
     }
 
     // $("#messages").scrollTop($("#messages")[0].scrollHeight+Number(30));

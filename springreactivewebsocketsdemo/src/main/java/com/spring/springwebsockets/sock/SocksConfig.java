@@ -127,12 +127,11 @@ public class SocksConfig {
 
             session.receive()
                     .map(wsm -> wsm.getPayloadAsText())
-                    /*
-                     * .onErrorReturn(throwable -> {
-                     * logger.info("Chat Session Closed : "+session.getId());
-                     * return session.close();
-                     * })
-                     */
+                    .onErrorResume(t -> {
+                        logger.info("Chat Session Closed on Error: " + session.getId());
+                        session.close();
+                        return Mono.error(t);
+                    })
                     .map(s -> {
                         ChatMessage cmparsed = null;
                         try {
@@ -146,17 +145,21 @@ public class SocksConfig {
                         return cmparsed;
                     })
                     .map(cmsg -> updateSessionRepo(repo, cmsg))
-                    .flatMap(chatMessage -> {
-                        // Needed?
-                        if (chatMessage.getType().equals(MessageTypes.LEAVE)) {
-                            // session.close();
-                        }
-                        return Mono.just(chatMessage);
-                    })
+                    /*
+                     * .flatMap(chatMessage -> {
+                     * // Needed?
+                     * if (chatMessage.getType().equals(MessageTypes.LEAVE)) {
+                     * logger.info("Chat Session Closed on LEAVE message: " + session.getId());
+                     * session.close();
+                     * }
+                     * return Mono.just(chatMessage);
+                     * })
+                     */
                     .doOnComplete(() -> {
-                        logger.info("Chat Session Closed : " + session.getId());
-                        // session.close();
-                    }).log()
+                        logger.info("Chat Session completed " + session.getId());
+                        // session.close(); // No need?
+                    })
+                    // .log()
                     .doOnNext(chatSessionStream::tryEmitNext)
                     .subscribe();
 

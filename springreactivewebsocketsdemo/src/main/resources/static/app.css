@@ -26,7 +26,8 @@ div.events {
     background: url("ubg.png");
     background-size: cover;
     text-align: center;
-    font-weight: 500;
+    font-weight: bold;
+    font-size: 12px;
   }
 
   #messages{
@@ -59,6 +60,7 @@ div.events {
     content: "";
     display: table;
     clear: both;
+    
   }
 
   .outrecol {

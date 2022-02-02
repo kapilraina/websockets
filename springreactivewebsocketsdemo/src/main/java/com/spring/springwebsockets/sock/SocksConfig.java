@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import com.spring.springwebsockets.model.ChatMessage;
 import com.spring.springwebsockets.model.MessageTypes;
@@ -247,15 +249,22 @@ public class SocksConfig {
     @Bean
     public Map<String, UserDetails> createSyntheticUsers(PasswordEncoder passwordEncoder) {
 
-        User u1 = new User("jhon", passwordEncoder.encode("password"), List.of("USER", "DEVELOPER"));
-        User u2 = new User("jane", passwordEncoder.encode("password"), List.of("USER", "DBA"));
-        User u3 = new User("jim", passwordEncoder.encode("password"), List.of("USER", "ADMIN"));
-        Map<String, UserDetails> users = new HashMap<String, UserDetails>();
-        users.put(u1.getUsername(), new CustomUserDetails(u1));
-        users.put(u2.getUsername(), new CustomUserDetails(u2));
-        users.put(u3.getUsername(), new CustomUserDetails(u3));
-        return users;
-
+        return List.of(
+                new User("jim", passwordEncoder.encode("password"), List.of("USER", "SALES")),
+                new User("pam", passwordEncoder.encode("password"), List.of("USER", "ADMIN")),
+                new User("dwight", passwordEncoder.encode("password"), List.of("USER", "SALES", "DBA")),
+                new User("michael", passwordEncoder.encode("password"), List.of("USER", "MANAGER")),
+                new User("oscar", passwordEncoder.encode("password"), List.of("USER", "ACCOUNTANT")),
+                new User("angela", passwordEncoder.encode("password"), List.of("USER", "ACCOUNTANT")),
+                new User("kevin", passwordEncoder.encode("password"), List.of("USER", "KELVIN")),
+                new User("stanley", passwordEncoder.encode("password"), List.of("USER", "SALES")),
+                new User("phyllis", passwordEncoder.encode("password"), List.of("USER", "SALES")),
+                new User("creed", passwordEncoder.encode("password"), List.of("USER", "QA")))
+                .stream()
+                .map(u -> new CustomUserDetails(u))
+                .collect(Collectors.toMap(
+                        CustomUserDetails::getUsername,
+                        cud -> cud));
     }
 
     @Bean

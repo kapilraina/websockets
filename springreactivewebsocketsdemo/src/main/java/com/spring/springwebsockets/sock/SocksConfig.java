@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.spring.springwebsockets.model.ChatMessage;
@@ -124,10 +123,11 @@ public class SocksConfig {
             ChatUserRepository repo)
             throws JsonProcessingException {
 
-        return session -> {
-            logger.info("New Chat Session Initiated : " + session.getId());
+         return session -> {
 
-            session.receive()
+           // logger.info("New Chat Session Initiated : " + session.getId());
+
+            Mono<Void> inbound  = session.receive()
                     .map(wsm -> wsm.getPayloadAsText())
                     .onErrorResume(t -> {
                         logger.info("Chat Session Closed on Error: " + session.getId());
@@ -163,7 +163,7 @@ public class SocksConfig {
                     })
                     // .log()
                     .doOnNext(chatSessionStream::tryEmitNext)
-                    .subscribe();
+                    .then();
 
             Flux<WebSocketMessage> sessionOutboundFlux = chatSessionStream.asFlux()
                     .map(cmo1 -> {
@@ -188,7 +188,8 @@ public class SocksConfig {
                         return Mono.error(t);
                     });
 
-            return session.send(sessionOutboundFlux);
+                    Mono<Void> outbound = session.send(sessionOutboundFlux);
+                    return Mono.zip(inbound, outbound).then();
 
         };
 

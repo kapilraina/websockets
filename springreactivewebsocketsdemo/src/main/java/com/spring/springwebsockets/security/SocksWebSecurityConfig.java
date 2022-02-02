@@ -8,7 +8,6 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.authentication.WebFilterChainServerAuthenticationSuccessHandler;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebFluxSecurity
@@ -31,14 +30,17 @@ public class SocksWebSecurityConfig {
 
         return http.authorizeExchange()
                 .pathMatchers(HttpMethod.DELETE).denyAll()
-                .pathMatchers("/login", "/login.html", "/favicon.ico", "/public", "/*.js", "/*.css", "/*.png", "/static/*")
+                .pathMatchers("/login", "/login.html", "/favicon.ico", "/public", "/*.js", "/*.css", "/*.png",
+                        "/static/*")
                 .permitAll()
-                .pathMatchers("/ws/*", "/chat.html", "/rebound", "/chat/initialdata", "/",  "/logout","/logout.html").authenticated()
+                .pathMatchers("/ws/*", "/chat.html", "/rebound", "/chat/initialdata", "/", "/logout", "/logout.html")
+                .authenticated()
                 .pathMatchers("/chat/broadcast/*").hasAnyAuthority("ROLE_ADMIN")
                 .and()
                 .formLogin()
-                //.authenticationSuccessHandler(new WebFilterChainServerAuthenticationSuccessHandler())
-               // .authenticationSuccessHandler(customLoginSuccessHandler)
+                // .authenticationSuccessHandler(new
+                // WebFilterChainServerAuthenticationSuccessHandler())
+                // .authenticationSuccessHandler(customLoginSuccessHandler)
                 .and()
                 .logout()
                 .logoutUrl("/logout")

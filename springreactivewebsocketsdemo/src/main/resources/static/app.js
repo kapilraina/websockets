@@ -67,6 +67,7 @@ function message(message) {
     console.log(message);
 
     if (messageObj['username'] === username) {
+        messageObj['username'] = "me"
         $('.messagescontainer').append(
             "<br/><div class='messagerow ownmessage'>" +
             "<div class='column left'><label class='username'>[" + messageObj['username'] + "] </label></div>" +

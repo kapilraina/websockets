@@ -76,11 +76,12 @@ div.events {
 
   .ownmessage {
     background-color: rgb(0 123 255 / 5%);
+    margin-left: 5%;
   }
 
   .othersmessage {
     background-color: rgb(0 255 196 / 5%);
-    margin-left: 5%;
+
   }
 
   .username{

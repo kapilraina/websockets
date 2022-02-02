@@ -27,6 +27,13 @@ public class SpringwebsocketsdemoApplication {
 		SpringApplication.run(SpringwebsocketsdemoApplication.class, args);
 	}
 
+	/**
+	 * low latency, high frequency, and high volume that make the best case for the
+	 * use of WebSocket.
+	 * 
+	 * @return
+	 */
+
 	@Bean
 	CommandLineRunner a__run() {
 		return args -> {

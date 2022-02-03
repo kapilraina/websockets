@@ -67,10 +67,10 @@ function message(message) {
     console.log(message);
 
     if (messageObj['username'] === username) {
-        messageObj['username'] = "me"
+       
         $('.messagescontainer').append(
             "<br/><div class='messagerow ownmessage'>" +
-            "<div class='column left'><label class='username'>[" + messageObj['username'] + "] </label></div>" +
+            "<div class='column left'><label class='username'>[me] </label></div>" +
             "<div class='column middle'><label class='message'>" + messageObj['message'] + "</label></div>" +
             "<div class='column right'><label class='timestamp'>" + messageObj['timestamp'] + "</label></div>" +
             "</div>");

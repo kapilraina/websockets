@@ -123,11 +123,11 @@ public class SocksConfig {
             ChatUserRepository repo)
             throws JsonProcessingException {
 
-         return session -> {
+        return session -> {
 
-           // logger.info("New Chat Session Initiated : " + session.getId());
+            // logger.info("New Chat Session Initiated : " + session.getId());
 
-            Mono<Void> inbound  = session.receive()
+            Mono<Void> inbound = session.receive()
                     .map(wsm -> wsm.getPayloadAsText())
                     .onErrorResume(t -> {
                         logger.info("Chat Session Closed on Error: " + session.getId());
@@ -188,8 +188,8 @@ public class SocksConfig {
                         return Mono.error(t);
                     });
 
-                    Mono<Void> outbound = session.send(sessionOutboundFlux);
-                    return Mono.zip(inbound, outbound).then();
+            Mono<Void> outbound = session.send(sessionOutboundFlux);
+            return Mono.zip(inbound, outbound).then();
 
         };
 

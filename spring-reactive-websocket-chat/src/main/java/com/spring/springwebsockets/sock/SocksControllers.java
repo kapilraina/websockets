@@ -38,13 +38,23 @@ import reactor.core.publisher.Sinks.Many;
 @RestController
 public class SocksControllers {
 
-/*  @Autowired
-  @Qualifier("wshbean4Chat")
-  WebSocketHandler wshbean4Chat;*/
+  @Autowired
+  @Qualifier("wshbean7Chat")
+  WebSocketHandler wshbean7Chat;
+
+  @Autowired
+  @Qualifier("wshbean6Chat")
+  WebSocketHandler wshbean6Chat;
 
   @Autowired
   @Qualifier("wshbean5Chat")
   WebSocketHandler wshbean5Chat;
+
+
+  @Autowired
+  @Qualifier("wshbean4Chat")
+  WebSocketHandler wshbean4Chat;
+
 
   @Autowired
   Many<ChatMessage> chatMessageStream;
@@ -131,7 +141,7 @@ public class SocksControllers {
 
   @Bean
   SimpleUrlHandlerMapping getDefwsh4() {
-    return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean5Chat), 10);
+    return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean7Chat), 10);
   }
 
 }

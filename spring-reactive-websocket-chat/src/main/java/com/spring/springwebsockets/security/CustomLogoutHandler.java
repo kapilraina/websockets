@@ -5,6 +5,10 @@ import com.spring.springwebsockets.model.ChatMessage;
 import com.spring.springwebsockets.model.MessageTypes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.integration.channel.FluxMessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.server.WebFilterExchange;
@@ -22,26 +26,31 @@ public class CustomLogoutHandler implements ServerLogoutHandler {
     private ChatUserRepository repo;
     private ChatUtils chatUtils;
     private Sinks.Many<ChatMessage> chatMessageStream;
+    private FluxMessageChannel fmcin;
+
     public CustomLogoutHandler(ChatUserRepository repo, ChatUtils chatUtils,
-    Sinks.Many<ChatMessage> chatMessageStream)
-    {
-        this.repo =  repo;
+                               Sinks.Many<ChatMessage> chatMessageStream, @Qualifier("inboundfmc") FluxMessageChannel fmcin) {
+        this.repo = repo;
         this.chatUtils = chatUtils;
         this.chatMessageStream = chatMessageStream;
+        this.fmcin = fmcin;
     }
 
 
     @Override
     public Mono<Void> logout(WebFilterExchange exchange, Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        logger.info("Principal at logout "+principal);
-        if(principal instanceof UserDetails) {
+        logger.info("Principal at logout " + principal);
+        if (principal instanceof UserDetails) {
             String username = ((UserDetails) authentication.getPrincipal()).getUsername();
             String msg = "Logging Out : " + username;
             Mono<Void> leftVoid = repo.leftChatSession(username);
             ChatMessage broadcast = new ChatMessage(username, msg, chatUtils.getCurrentTimeSamp(),
                     MessageTypes.LEAVE);
+            // For wshbean4Chat
             chatMessageStream.tryEmitNext(broadcast);
+            // For wshbean5Chat or wshbean6Chat
+            fmcin.send(MessageBuilder.withPayload(broadcast).build());
             logger.info(username + " logged off at " + new Date());
 
             return leftVoid;

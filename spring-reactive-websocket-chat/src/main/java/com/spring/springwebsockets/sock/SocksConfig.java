@@ -18,7 +18,6 @@ import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.StandardIntegrationFlow;
 import org.springframework.integration.dsl.context.IntegrationFlowContext;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import reactor.core.publisher.Flux;
@@ -35,6 +34,27 @@ public class SocksConfig {
     @Autowired
     private IntegrationFlowContext integrationFlowContext;
 
+    @Bean(name = "wshbean8Chat")
+    WebSocketHandler wshbean8Chat(
+            ChatUtils utils,
+            @Qualifier("rabbitpubfmc") FluxMessageChannel fmcpub,
+            @Qualifier("rabbitsubfmc") FluxMessageChannel fmcsub,
+            ObjectMapper mapper,
+            ChatUserRepository repo
+    ) throws JsonProcessingException {
+        return session -> {
+            logger.info("[8] New Chat Session Initiated : " + session.getId());
+
+            Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
+            fmcpub.subscribeTo(incomingFlux);
+
+            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFluxFromRaw(session, fmcsub, mapper);
+
+            Mono<Void> outbound = session.send(sessionOutboundFlux);
+            return outbound;
+        };
+    }
+
     @Bean(name = "wshbean7Chat")
     WebSocketHandler wshbean7Chat(
             ChatUtils utils,
@@ -46,73 +66,10 @@ public class SocksConfig {
         return session -> {
             logger.info("[7] New Chat Session Initiated : " + session.getId());
 
-            Flux<Message<ChatMessage>> incomingFlux =
-                    session.receive()
-                            .map(wsm -> wsm.getPayloadAsText())
-                            .onErrorResume(
-                                    t -> {
-                                        logger.info("Chat Session Closed on Error: " + t);
-                                        session.close();
-                                        return Mono.error(t);
-                                    }
-                            )
-                            .map(
-                                    s -> {
-                                        ChatMessage cmparsed = null;
-                                        try {
-                                            cmparsed = mapper.readValue(s, ChatMessage.class);
-                                            cmparsed.setTimestamp(utils.getCurrentTimeSamp());
-                                            logger.info("Received :" + cmparsed);
-                                            return cmparsed;
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        return cmparsed;
-                                    }
-                            )
-                            .map(cmsg -> updateSessionRepo(repo, cmsg))
-                            .map(cmsg -> MessageBuilder.withPayload(cmsg).setHeader("webSocketSession", session).build())
-
-                            .doOnComplete(
-                                    () -> {
-                                        logger.info("Chat Session completed " + session.getId());
-                                        // session.close(); // No need?
-                                    }
-                            );
-
+            Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
             fmcpubsub.subscribeTo(incomingFlux);
 
-
-            Flux<WebSocketMessage> sessionOutboundFlux = Flux.from(fmcpubsub)
-                    .map(cmsg -> (ChatMessage) cmsg.getPayload())
-                    .map(
-                            cmo1 -> {
-                                if (cmo1.getType().equals(MessageTypes.LEAVE)) {
-                                    cmo1.setMessage("Left");
-                                }
-                                return cmo1;
-                            }
-                    )
-                    .map(
-                            cmo -> {
-                                try {
-                                    return mapper.writeValueAsString(cmo);
-                                } catch (JsonProcessingException e) {
-                                    e.printStackTrace();
-                                }
-                                return "";
-                            }
-                    )
-                    .map(session::textMessage)
-                    .onErrorResume(
-                            t -> {
-                                logger.info(
-                                        t.getMessage() + "::Chat Session Closed : " + session.getId()
-                                );
-                                session.close();
-                                return Mono.error(t);
-                            }
-                    );
+            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, fmcpubsub, mapper);
 
             Mono<Void> outbound = session.send(sessionOutboundFlux);
             return outbound;
@@ -131,73 +88,10 @@ public class SocksConfig {
         return session -> {
             logger.info("[6] New Chat Session Initiated : " + session.getId());
 
-            Flux<Message<ChatMessage>> incomingFlux =
-                    session.receive()
-                            .map(wsm -> wsm.getPayloadAsText())
-                            .onErrorResume(
-                                    t -> {
-                                        logger.info("Chat Session Closed on Error: " + t);
-                                        session.close();
-                                        return Mono.error(t);
-                                    }
-                            )
-                            .map(
-                                    s -> {
-                                        ChatMessage cmparsed = null;
-                                        try {
-                                            cmparsed = mapper.readValue(s, ChatMessage.class);
-                                            cmparsed.setTimestamp(utils.getCurrentTimeSamp());
-                                            logger.info("Received :" + cmparsed);
-                                            return cmparsed;
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        return cmparsed;
-                                    }
-                            )
-                            .map(cmsg -> updateSessionRepo(repo, cmsg))
-                            .map(cmsg -> MessageBuilder.withPayload(cmsg).setHeader("webSocketSession", session).build())
-
-                            .doOnComplete(
-                                    () -> {
-                                        logger.info("Chat Session completed " + session.getId());
-                                        // session.close(); // No need?
-                                    }
-                            );
-
+            Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
             inboundfmc.subscribeTo(incomingFlux);
 
-
-            Flux<WebSocketMessage> sessionOutboundFlux = Flux.from(outboundfmc)
-                    .map(cmsg -> (ChatMessage) cmsg.getPayload())
-                    .map(
-                            cmo1 -> {
-                                if (cmo1.getType().equals(MessageTypes.LEAVE)) {
-                                    cmo1.setMessage("Left");
-                                }
-                                return cmo1;
-                            }
-                    )
-                    .map(
-                            cmo -> {
-                                try {
-                                    return mapper.writeValueAsString(cmo);
-                                } catch (JsonProcessingException e) {
-                                    e.printStackTrace();
-                                }
-                                return "";
-                            }
-                    )
-                    .map(session::textMessage)
-                    .onErrorResume(
-                            t -> {
-                                logger.info(
-                                        t.getMessage() + "::Chat Session Closed : " + session.getId()
-                                );
-                                session.close();
-                                return Mono.error(t);
-                            }
-                    );
+            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, outboundfmc, mapper);
 
             Mono<Void> outbound = session.send(sessionOutboundFlux);
             return outbound;
@@ -216,39 +110,7 @@ public class SocksConfig {
         return session -> {
             logger.info("[5] New Chat Session Initiated : " + session.getId());
 
-            Flux<Message<ChatMessage>> incomingFlux =
-                    session.receive()
-                            .map(wsm -> wsm.getPayloadAsText())
-                            .onErrorResume(
-                                    t -> {
-                                        logger.info("Chat Session Closed on Error: " + t);
-                                        session.close();
-                                        return Mono.error(t);
-                                    }
-                            )
-                            .map(
-                                    s -> {
-                                        ChatMessage cmparsed = null;
-                                        try {
-                                            cmparsed = mapper.readValue(s, ChatMessage.class);
-                                            cmparsed.setTimestamp(utils.getCurrentTimeSamp());
-                                            logger.info("Received :" + cmparsed);
-                                            return cmparsed;
-                                        } catch (Exception e) {
-                                            e.printStackTrace();
-                                        }
-                                        return cmparsed;
-                                    }
-                            )
-                            .map(cmsg -> updateSessionRepo(repo, cmsg))
-                            .map(cmsg -> MessageBuilder.withPayload(cmsg).setHeader("webSocketSession", session).build())
-
-                            .doOnComplete(
-                                    () -> {
-                                        logger.info("Chat Session completed " + session.getId());
-                                        // session.close(); // No need?
-                                    }
-                            );
+            Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
 
             StandardIntegrationFlow standardIntegrationFlow = IntegrationFlows.from(incomingFlux).channel(fmcBeanIN).get();
             if (integrationFlowContext.getRegistrationById("globalChatIntegration") == null) {
@@ -256,37 +118,7 @@ public class SocksConfig {
             }
 
 
-            Flux<WebSocketMessage> sessionOutboundFlux = Flux.from(fmcBeanIN)
-                    .map(cmsg -> (ChatMessage) cmsg.getPayload())
-                    .map(
-                            cmo1 -> {
-                                if (cmo1.getType().equals(MessageTypes.LEAVE)) {
-                                    cmo1.setMessage("Left");
-                                }
-                                return cmo1;
-                            }
-                    )
-                    .map(
-                            cmo -> {
-                                try {
-                                    return mapper.writeValueAsString(cmo);
-                                } catch (JsonProcessingException e) {
-                                    e.printStackTrace();
-                                }
-                                return "";
-                            }
-                    )
-                    .map(session::textMessage)
-                    .onErrorResume(
-                            t -> {
-                                logger.info(
-                                        t.getMessage() + "::Chat Session Closed : " + session.getId()
-                                );
-                                session.close();
-                                return Mono.error(t);
-                            }
-                    );
-
+            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, fmcBeanIN, mapper);
             Mono<Void> outbound = session.send(sessionOutboundFlux);
             return outbound;
         };
@@ -301,7 +133,7 @@ public class SocksConfig {
     )
             throws JsonProcessingException {
         return session -> {
-             logger.info("[4] New Chat Session Initiated : " + session.getId());
+            logger.info("[4] New Chat Session Initiated : " + session.getId());
 
             Mono<Void> inbound = session
                     .receive()
@@ -327,7 +159,7 @@ public class SocksConfig {
                                 return cmparsed;
                             }
                     )
-                    .map(cmsg -> updateSessionRepo(repo, cmsg))
+                    .map(cmsg -> utils.updateSessionRepo(repo, cmsg))
                     /*
                      * .flatMap(chatMessage -> {
                      * // Needed?
@@ -382,18 +214,6 @@ public class SocksConfig {
             Mono<Void> outbound = session.send(sessionOutboundFlux);
             return Mono.zip(inbound, outbound).then();
         };
-    }
-
-
-    private ChatMessage updateSessionRepo(
-            ChatUserRepository repo,
-            ChatMessage cmsg
-    ) {
-        if (cmsg.getType().equals(MessageTypes.LEAVE)) {
-            repo.leftChatSession(cmsg.getUsername());
-        }
-        System.out.println("Session Repo Updated for " + cmsg);
-        return cmsg;
     }
 
 

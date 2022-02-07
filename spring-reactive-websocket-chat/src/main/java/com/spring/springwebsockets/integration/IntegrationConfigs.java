@@ -47,6 +47,21 @@ public class IntegrationConfigs {
         return fmc;
     }
 
+    @Bean
+    @Qualifier("rabbitpubfmc")
+    FluxMessageChannel rabbitpubfmcBean() {
+
+        FluxMessageChannel fmc = new FluxMessageChannel();
+        return fmc;
+    }
+
+    @Bean
+    @Qualifier("rabbitsubfmc")
+    FluxMessageChannel rabbitsubfmcBean() {
+
+        FluxMessageChannel fmc = new FluxMessageChannel();
+        return fmc;
+    }
 
     @Bean
     IntegrationFlow fluxItegration(@Qualifier("inboundfmc") FluxMessageChannel fmcin, @Qualifier("outboundfmc") FluxMessageChannel fmcout) {
@@ -57,10 +72,13 @@ public class IntegrationConfigs {
     }
 
     @Bean
-    IntegrationFlow fluxItegration(@Qualifier("pubsubfmc") FluxMessageChannel fmcpubsub) {
-        return IntegrationFlows.from(((MessageChannel) fmcpubsub)).bridge().nullChannel();
+    IntegrationFlow fluxItegration(@Qualifier("rabbitpubfmc") FluxMessageChannel rabbitpubfmc) {
+        return IntegrationFlows.from(((MessageChannel) rabbitpubfmc)).bridge().nullChannel();
+    }
 
 
-
+    @Bean
+    IntegrationFlow fluxItegration2(@Qualifier("rabbitsubfmc") FluxMessageChannel rabbitsubfmc) {
+        return IntegrationFlows.from(((MessageChannel) rabbitsubfmc)).bridge().nullChannel();
     }
 }

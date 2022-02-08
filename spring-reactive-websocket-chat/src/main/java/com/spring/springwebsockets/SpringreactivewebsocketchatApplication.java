@@ -21,7 +21,7 @@ public class SpringreactivewebsocketchatApplication {
   Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
   public static void main(String[] args) {
-    System.setProperty("spring.profiles.active", "wsserver");
+    //System.setProperty("spring.profiles.active", "wsserver");
     SpringApplication.run(SpringreactivewebsocketchatApplication.class, args);
   }
   /**

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -38,29 +39,25 @@ import reactor.core.publisher.Sinks.Many;
 @RestController
 public class SocksControllers {
 
-  @Autowired
+
+  @Autowired(required = false)
   @Qualifier("wshbean8Chat")
   WebSocketHandler wshbean8Chat;
 
-  @Autowired
+  @Autowired(required = false)
   @Qualifier("wshbean7Chat")
   WebSocketHandler wshbean7Chat;
 
-  @Autowired
+  @Autowired(required = false)
   @Qualifier("wshbean6Chat")
   WebSocketHandler wshbean6Chat;
 
-  @Autowired
+  @Autowired(required = false)
   @Qualifier("wshbean5Chat")
   WebSocketHandler wshbean5Chat;
 
 
-  @Autowired
-  @Qualifier("wshbean4Chat")
-  WebSocketHandler wshbean4Chat;
-
-
-  @Autowired
+  @Autowired(required = false)
   Many<ChatMessage> chatMessageStream;
 
   @Autowired
@@ -144,8 +141,28 @@ public class SocksControllers {
   }
 
   @Bean
-  SimpleUrlHandlerMapping getDefwsh() {
+  @Profile({"amqp","fuse"})
+  SimpleUrlHandlerMapping getDefwsh_8() {
     return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean8Chat), 10);
   }
+
+  @Bean
+  @Profile({"localpubsub"})
+  SimpleUrlHandlerMapping getDefwsh_7() {
+    return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean7Chat), 10);
+  }
+
+  @Bean
+  @Profile({"flowreg"})
+  SimpleUrlHandlerMapping getDefwsh_6() {
+    return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean6Chat), 10);
+  }
+
+  @Bean
+  @Profile({"sink"})
+  SimpleUrlHandlerMapping getDefwsh_5() {
+    return new SimpleUrlHandlerMapping(Map.of("/ws/chat", wshbean5Chat), 10);
+  }
+
 
 }

@@ -1,9 +1,5 @@
-chatprops:
-  timestampdateformat: EEE, d MMM yyyy HH:mm:ss Z
 
 spring:
-  main:
-    web-application-type: reactive
   cloud:
     stream:
       function:

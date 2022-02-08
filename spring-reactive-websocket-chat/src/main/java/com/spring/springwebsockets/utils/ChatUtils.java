@@ -61,11 +61,11 @@ public class ChatUtils {
                                 return cmparsed;
                             } catch (Exception e) {
                                 e.printStackTrace();
+                                return Mono.error(e);
                             }
-                            return cmparsed;
                         }
                 )
-                .map(cmsg -> updateSessionRepo(repo, cmsg))
+                .map(cmsg -> updateSessionRepo(repo, (ChatMessage) cmsg))
                 .map(cmsg -> MessageBuilder.withPayload(cmsg).setHeader("webSocketSession", session).build())
 
                 .doOnComplete(
@@ -81,24 +81,29 @@ public class ChatUtils {
             WebSocketSession session,
             FluxMessageChannel fmcpubsub,
             ObjectMapper mapper
-    )   {
+    ) {
 
         return Flux.from(fmcpubsub)
                 .map(m -> {
                     ChatMessage cm = null;
                     try {
-                        cm = mapper.readValue(new String((byte[])m.getPayload()),ChatMessage.class);
+                        if(m.getPayload() instanceof ChatMessage)
+                        {
+                            cm =  (ChatMessage) m.getPayload();
+                        }
+                        else {
+                            cm = mapper.readValue(new String((byte[]) m.getPayload()), ChatMessage.class);
+                        }
                     } catch (JsonProcessingException e) {
                         e.printStackTrace();
+                        return Mono.error(e);
                     }
                     return cm;
                 })
-                //.map(cmsg -> (ChatMessage) cmsg.getPayload())
-                .log()
                 .map(
-                        cmo1 -> {
-                            if (cmo1.getType().equals(MessageTypes.LEAVE)) {
-                                cmo1.setMessage("Left");
+                        (cmo1) -> {
+                            if (((ChatMessage) cmo1).getType().equals(MessageTypes.LEAVE)) {
+                                ((ChatMessage) cmo1).setMessage("Left");
                             }
                             return cmo1;
                         }
@@ -148,11 +153,12 @@ public class ChatUtils {
                                 return mapper.writeValueAsString(cmo);
                             } catch (JsonProcessingException e) {
                                 e.printStackTrace();
+                                return Mono.error(e);
                             }
-                            return "";
+
                         }
                 )
-                .map(session::textMessage)
+                .map(cmop -> session.textMessage((String) cmop))
                 .onErrorResume(
                         t -> {
                             logger.info(

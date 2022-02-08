@@ -13,11 +13,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.integration.channel.FluxMessageChannel;
+import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.StandardIntegrationFlow;
 import org.springframework.integration.dsl.context.IntegrationFlowContext;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import reactor.core.publisher.Flux;
@@ -35,10 +38,11 @@ public class SocksConfig {
     private IntegrationFlowContext integrationFlowContext;
 
     @Bean(name = "wshbean8Chat")
+    @Profile({"amqp", "fuse"})
     WebSocketHandler wshbean8Chat(
             ChatUtils utils,
-            @Qualifier("rabbitpubfmc") FluxMessageChannel fmcpub,
-            @Qualifier("rabbitsubfmc") FluxMessageChannel fmcsub,
+            @Qualifier("pubfmc") FluxMessageChannel fmcpub,
+            @Qualifier("subfmc") FluxMessageChannel fmcsub,
             ObjectMapper mapper,
             ChatUserRepository repo
     ) throws JsonProcessingException {
@@ -56,9 +60,10 @@ public class SocksConfig {
     }
 
     @Bean(name = "wshbean7Chat")
+    @Profile({"localpubsub"})
     WebSocketHandler wshbean7Chat(
             ChatUtils utils,
-            @Qualifier("pubsubfmc") FluxMessageChannel fmcpubsub,
+            @Qualifier("pubfmc") FluxMessageChannel fmcpubsub,
             ObjectMapper mapper,
             ChatUserRepository repo
     )
@@ -77,32 +82,10 @@ public class SocksConfig {
     }
 
     @Bean(name = "wshbean6Chat")
+    @Profile({"flowreg"})
     WebSocketHandler wshbean6Chat(
             ChatUtils utils,
-            @Qualifier("inboundfmc") FluxMessageChannel inboundfmc,
-            @Qualifier("outboundfmc") FluxMessageChannel outboundfmc,
-            ObjectMapper mapper,
-            ChatUserRepository repo
-    )
-            throws JsonProcessingException {
-        return session -> {
-            logger.info("[6] New Chat Session Initiated : " + session.getId());
-
-            Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
-            inboundfmc.subscribeTo(incomingFlux);
-
-            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, outboundfmc, mapper);
-
-            Mono<Void> outbound = session.send(sessionOutboundFlux);
-            return outbound;
-        };
-    }
-
-
-    @Bean(name = "wshbean5Chat")
-    WebSocketHandler wshbean5Chat(
-            ChatUtils utils,
-            @Qualifier("inboundfmc") FluxMessageChannel fmcBeanIN,
+            @Qualifier("pubfmc") FluxMessageChannel pubfmcreg,
             ObjectMapper mapper,
             ChatUserRepository repo
     )
@@ -111,21 +94,23 @@ public class SocksConfig {
             logger.info("[5] New Chat Session Initiated : " + session.getId());
 
             Flux<Message<ChatMessage>> incomingFlux = utils.prepareIncomingFlux(session, mapper, repo);
-
-            StandardIntegrationFlow standardIntegrationFlow = IntegrationFlows.from(incomingFlux).channel(fmcBeanIN).get();
+            IntegrationFlow standardIntegrationFlow = IntegrationFlows.from(((MessageChannel) pubfmcreg)).bridge().nullChannel();
+            // StandardIntegrationFlow standardIntegrationFlow = IntegrationFlows.from(incomingFlux).channel(fmcpub).get();
             if (integrationFlowContext.getRegistrationById("globalChatIntegration") == null) {
                 integrationFlowContext.registration(standardIntegrationFlow).register();
             }
 
+            pubfmcreg.subscribeTo(incomingFlux);
 
-            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, fmcBeanIN, mapper);
+            Flux<WebSocketMessage> sessionOutboundFlux = utils.prepareOutBoundFlux(session, pubfmcreg, mapper);
             Mono<Void> outbound = session.send(sessionOutboundFlux);
             return outbound;
         };
     }
 
-    @Bean(name = "wshbean4Chat")
-    WebSocketHandler wshbean4Chat(
+    @Bean(name = "wshbean5Chat")
+    @Profile({"sink"})
+    WebSocketHandler wshbean5Chat(
             Many<ChatMessage> chatSessionStream,
             ChatUtils utils,
             ObjectMapper mapper,

@@ -4,6 +4,7 @@ import com.spring.springwebsockets.model.ChatMessage;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.integration.channel.FluxMessageChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
@@ -15,70 +16,51 @@ import reactor.core.publisher.Sinks.Many;
 public class IntegrationConfigs {
 
     @Bean
+    @Profile({"sink"})
     Many<ChatMessage> chatMessageStream() {
         return Sinks.many().multicast().<ChatMessage>onBackpressureBuffer();
     }
 
     @Bean
-    @Qualifier("inboundfmc")
-    FluxMessageChannel fmcBeanIN() {
-
+    @Qualifier("pubfmc")
+    @Profile({"!sink"})
+    FluxMessageChannel pubfmc() {
         FluxMessageChannel fmc = new FluxMessageChannel();
-        //fmc.setManagedName("chatMessageStreamChannel");
         return fmc;
     }
 
 
     @Bean
-    @Qualifier("outboundfmc")
-    FluxMessageChannel fmcBeanOut() {
-
+    @Qualifier("subfmc")
+    @Profile({"amqp","fuse"})
+    FluxMessageChannel subfmc() {
         FluxMessageChannel fmc = new FluxMessageChannel();
-        //fmc.setManagedName("chatMessageStreamChannel");
         return fmc;
     }
 
-    @Bean
+/*    @Bean
     @Qualifier("pubsubfmc")
-    FluxMessageChannel pubsubBean() {
-
-        FluxMessageChannel fmc = new FluxMessageChannel();
-        //fmc.setManagedName("chatMessageStreamChannel");
-        return fmc;
-    }
-
-    @Bean
-    @Qualifier("rabbitpubfmc")
-    FluxMessageChannel rabbitpubfmcBean() {
-
+    @Profile({"localpubsub"})
+    FluxMessageChannel pubsubfmc() {
         FluxMessageChannel fmc = new FluxMessageChannel();
         return fmc;
-    }
+    }*/
 
     @Bean
-    @Qualifier("rabbitsubfmc")
-    FluxMessageChannel rabbitsubfmcBean() {
-
-        FluxMessageChannel fmc = new FluxMessageChannel();
-        return fmc;
-    }
-
-    @Bean
-    IntegrationFlow fluxItegration(@Qualifier("inboundfmc") FluxMessageChannel fmcin, @Qualifier("outboundfmc") FluxMessageChannel fmcout) {
+    @Profile("fuse")
+    IntegrationFlow fluxItegration(@Qualifier("pubfmc") FluxMessageChannel fmcin, @Qualifier("subfmc") FluxMessageChannel fmcout) {
         return IntegrationFlows.from(((MessageChannel) fmcin))
                 .channel(fmcout).get();
 
+    }
 
+/*    @Bean
+    IntegrationFlow fluxItegration(@Qualifier("pubfmc") FluxMessageChannel pubfmc) {
+        return IntegrationFlows.from(((MessageChannel) pubfmc)).bridge().nullChannel();
     }
 
     @Bean
-    IntegrationFlow fluxItegration(@Qualifier("rabbitpubfmc") FluxMessageChannel rabbitpubfmc) {
-        return IntegrationFlows.from(((MessageChannel) rabbitpubfmc)).bridge().nullChannel();
-    }
-
-
-    @Bean
-    IntegrationFlow fluxItegration2(@Qualifier("rabbitsubfmc") FluxMessageChannel rabbitsubfmc) {
-        return IntegrationFlows.from(((MessageChannel) rabbitsubfmc)).bridge().nullChannel();
-    }
+    IntegrationFlow fluxItegration2(@Qualifier("subfmc") FluxMessageChannel subfmc) {
+        return IntegrationFlows.from(((MessageChannel) subfmc)).bridge().nullChannel();
+    }*/
 }

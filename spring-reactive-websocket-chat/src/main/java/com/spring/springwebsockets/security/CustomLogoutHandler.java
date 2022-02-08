@@ -29,7 +29,7 @@ public class CustomLogoutHandler implements ServerLogoutHandler {
     private FluxMessageChannel fmcin;
 
     public CustomLogoutHandler(ChatUserRepository repo, ChatUtils chatUtils,
-                               Sinks.Many<ChatMessage> chatMessageStream, @Qualifier("inboundfmc") FluxMessageChannel fmcin) {
+                               @Autowired(required = false) Sinks.Many<ChatMessage> chatMessageStream, @Autowired(required = false) @Qualifier("pubfmc") FluxMessageChannel fmcin) {
         this.repo = repo;
         this.chatUtils = chatUtils;
         this.chatMessageStream = chatMessageStream;
@@ -48,9 +48,11 @@ public class CustomLogoutHandler implements ServerLogoutHandler {
             ChatMessage broadcast = new ChatMessage(username, msg, chatUtils.getCurrentTimeSamp(),
                     MessageTypes.LEAVE);
             // For wshbean4Chat
-            chatMessageStream.tryEmitNext(broadcast);
-            // For wshbean5Chat or wshbean6Chat
-            fmcin.send(MessageBuilder.withPayload(broadcast).build());
+            if (chatMessageStream != null)
+                chatMessageStream.tryEmitNext(broadcast);
+            // For others using FluxMessageChannel
+            if (fmcin != null)
+                fmcin.send(MessageBuilder.withPayload(broadcast).build());
             logger.info(username + " logged off at " + new Date());
 
             return leftVoid;

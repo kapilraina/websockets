@@ -43,3 +43,4 @@ spring:
               rabbitmq:
                 host: rabbitmq-master
                 port: 5672
+
